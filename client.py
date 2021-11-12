@@ -1,61 +1,56 @@
-""""
-1. Реализовать простое клиент-серверное взаимодействие по протоколу JIM (JSON instant messaging):
-клиент отправляет запрос серверу;
-сервер отвечает соответствующим кодом результата.
-Клиент и сервер должны быть реализованы в виде отдельных скриптов, содержащих соответствующие функции.
-Функции клиента:
+'''
+реализовать:
+    - формирование presence - сообщения
+    - отправление сообщений серверу
+    - получение ответа от сервера
+    - разбор сообщений сервера
+    - прием параметров командной строки
+'''
 
-сформировать presence-сообщение;
-
-отправить сообщение серверу;
-получить ответ сервера;
-разобрать сообщение сервера;
-параметры командной строки скрипта client.py <addr> [<port>]:
-addr — ip-адрес сервера;
-port — tcp-порт на сервере, по умолчанию 7777.
-Функции сервера:
-принимает сообщение клиента;
-формирует ответ клиенту;
-отправляет ответ клиенту;
-имеет параметры командной строки:
--p <port> — TCP-порт для работы (по умолчанию использует 7777);
--a <addr> — IP-адрес для прослушивания (по умолчанию слушает все доступные адреса).
-
-Задание:
-1.) Изменить имена переменных и функций в предоставленном скрипте (чем больше, тем лучше);
-2.) Изменить порядок пары ip_адрес-порт на порт-ip_адрес : <port> [<addr>]:
-3.) Добавить в сообщение от клиента номер порта, по которому запрашиватеся соединение, например:
-` {'action': 'presence', 'time': 1634873801.598524, 'port': 9000, 'user': {'account_name': 'Guest'}}
-"""
-
-from socket import AF_INET, SOCK_STREAM, socket
-import pickle
-import time
-
-CLIENT_SOCK = socket(AF_INET, SOCK_STREAM)
-HOST = '127.0.0.1'
-PORT = 7777
+import json
+from socket import socket, AF_INET, SOCK_STREAM, gaierror, error
+from datetime import datetime
+import sys
 
 
-def init_socket():
-    CLIENT_SOCK.connect(('HOST', PORT))
+class Client:
 
+    def __init__(self, ip: str, port: int):
+        self.ip = ip
+        self.port = port
+        self.account_name = 'Олег'
+        self._create_socket()
 
-def send_answer():
-    msg = {
-        "action": "authenticate",
-        "time": time.time(),
-        "user": {
-            "account_name": "test",
-            "password": "test911"
-        }
-    }
-    CLIENT_SOCK.send(pickle.dumps(msg))
-    data = CLIENT_SOCK.recv(1024)
-    print('Сообщение от сервера:', pickle.loads(data), 'длинной ', len(data)),
-    CLIENT_SOCK.close()
+    def _create_socket(self):
+        self.socket = socket(AF_INET, SOCK_STREAM)
+        self.socket.connect((self.ip, self.port))
+
+    def get_time(self):
+        return str(datetime.timestamp(datetime.now()))
+
+    def _send_data(self, data):
+        send_data = json.dumps(data, ensure_ascii=False).encode('utf-8')
+        self.socket.send(send_data)
+        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        return response
+
+    def get_presence_message(self):
+        return {'action': 'presence',
+                'time': self.get_time(),
+                'type': 'status',
+                'user': {'account_name': self.account_name,
+                         'status': 'Enable'}
+                }
+
+    def run(self):
+        response = self._send_data(self.get_presence_message())
+        self.response_handler(response)
+
+    def response_handler(self, response):
+        if response['response'] == '200':
+            print(f'Соединение с сервером установлено, {response["alert"]}')
 
 
 if __name__ == '__main__':
-    SOCKET = init_socket()
-    SEND = send_answer()
+
+    Client('localhost', 7777).run()
