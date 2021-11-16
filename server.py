@@ -1,6 +1,7 @@
 from socket import socket, AF_INET, SOCK_STREAM
 import json
 from log.server_log_config import logger as log
+from decorators import log_decor
 
 callbacks = {'presence': lambda data: presence(data),
              'msg': lambda data: msg(data),
@@ -8,6 +9,7 @@ callbacks = {'presence': lambda data: presence(data),
              }
 
 
+@log_decor
 def create_server(ip: str, port: int) -> socket:
     try:
         server = socket(AF_INET, SOCK_STREAM)
@@ -37,6 +39,7 @@ def receive_data(server: socket):
             client.send(response.encode('utf-8'))
 
 
+@log_decor
 def handle_data(message: str) -> str:
     data = json.loads(message)
     response = callbacks[data["action"]](data)
@@ -55,6 +58,7 @@ def send_message_to_client(client: socket, message: str) -> None:
 
 def msg(data: dict):
     return json.dumps({'response': '200', 'alert': 'Успешно'}, ensure_ascii=False)
+
 
 def close(data):
     return 'q'

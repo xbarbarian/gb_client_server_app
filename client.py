@@ -2,10 +2,12 @@ import json
 from socket import socket, AF_INET, SOCK_STREAM
 from datetime import datetime
 from log.client_log_config import logger as log
+from decorators import log_decor
 
 account_name = 'test'
 
 
+@log_decor
 def create_client(ip: str, port: int) -> socket:
     log.info('Тест от клиента')
     try:
@@ -54,4 +56,3 @@ if __name__ == '__main__':
         message_from_server = client.recv(1024)
         print(message_from_server.decode('utf-8'))
     client.close()
-
