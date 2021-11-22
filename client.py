@@ -1,58 +1,44 @@
-import json
-from socket import socket, AF_INET, SOCK_STREAM
-from datetime import datetime
-from log.client_log_config import logger as log
-from decorators import log_decor
+from socket import AF_INET, SOCK_STREAM, socket
+import pickle
+import time
+import logging.config
+from decorators import log
 
-account_name = 'test'
+logger = logging.getLogger('messenger.client')
+
+s = socket(AF_INET, SOCK_STREAM)
 
 
-@log_decor
-def create_client(ip: str, port: int) -> socket:
-    log.info('Тест от клиента')
+@log
+def init_socket():
     try:
-        client = socket(AF_INET, SOCK_STREAM)
-        client.connect((ip, port))
-    except OSError as e:
-        log.error(e)
-    return client
+        s.connect(('localhost', 7777))
+    except ConnectionRefusedError:
+        logger.critical('Соединенте с сервером не установлено')
+    except OSError as error:
+        logger.critical(f'Инициализация не прошла ошибка: {error}')
+    else:
+        logger.info(f'Соединенте с сервером установлено.')
+        return s
 
 
-def send_message(data: dict, client: socket) -> None:
-    message = json.dumps(data, ensure_ascii=False)
-    client.send(message.encode('utf-8'))
-
-
-def get_dict_message(msg, reciever):
-    return {'action': 'msg',
-            'message': msg,
-            'time': str(datetime.now()),
-            'to': reciever,
-            'from': account_name,
-            'encoding': 'utf-8',
-            }
-
-
-def get_presence_message(account_name):
-    return {'action': 'presence',
-            'time': str(datetime.now()),
-            'type': 'status',
-            'user': {'account_name': account_name,
-                     'status': 'Enable'}
-            }
+@log
+def send_answer():
+    msg = {
+        "action": "authenticate",
+        "time": time.time(),
+        "user": {
+            "account_name": "test",
+            "password": "CorrectHorseBatteryStaple"
+        }
+    }
+    try:
+        return pickle.dumps(msg)
+    except pickle.PicklingError:
+        logger.error('Не удалось закодировать и отправить сообщни серверу')
+    s.close()
 
 
 if __name__ == '__main__':
-
-    client = create_client('localhost', 7777)
-    send_message(get_presence_message('test'), client)
-    log.info(client.recv(1024).decode('utf-8'))
-    while True:
-
-        msg = input('Enter your message: \n')
-        send_message(get_dict_message(msg, 'Peter'), client)
-        if msg == 'q':
-            break
-        message_from_server = client.recv(1024)
-        print(message_from_server.decode('utf-8'))
-    client.close()
+    socket = init_socket()
+    send = send_answer()

@@ -1,69 +1,44 @@
-from socket import socket, AF_INET, SOCK_STREAM
-import json
-from log.server_log_config import logger as log
-from decorators import log_decor
+from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, socket
+import pickle
+import logging.config
+from decorators import log
 
-callbacks = {'presence': lambda data: presence(data),
-             'msg': lambda data: msg(data),
-             'close': lambda data: close(data)
-             }
+logger = logging.getLogger('messenger.server')
+
+s = socket(AF_INET, SOCK_STREAM)
 
 
-@log_decor
-def create_server(ip: str, port: int) -> socket:
+@log
+def init_socket():
+    s.bind(('localhost', 7777))
+    s.listen(6)
+    s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     try:
-        server = socket(AF_INET, SOCK_STREAM)
-        server.bind((ip, port))
-        server.listen(5)
-        log.info(f'Create server at "{ip}":{port}')
-    except OSError as e:
-        log.error(f'Error - {e}')
-        exit(2)
-    return server
+        s.listen()
+    except OSError as error:
+        logger.critical(f'Инициализация не прошла ошибка: {error}')
+    else:
+        logger.info(f'Сервер запустился.')
+        return s
 
-
-def receive_data(server: socket):
+@log
+def main():
     while True:
-        client, addr = server.accept()
-        # print(f'Принят запрос от {addr}')
-        log.info(f'Принят запрос от {addr}')
-        while True:
-            message = client.recv(1024).decode('utf-8')
-            response = handle_data(message)
-            if response == 'q':
-                # print(f'Соединение с клиентом {addr} закрыто')
-                log.info(f'Соединение с клиентом {addr} закрыто')
-                break
-            # print(f'Сообщение от клиента: {message}')
-            log.info(f'Сообщение от клиента: {message}')
-            client.send(response.encode('utf-8'))
+        client, addr = s.accept()
+        print('Получен запрос на соединение от %s' % str(addr))
+        data = client.recv(1024)
+        response = {
+            'response': 200,
+            'alert': 'Позравляю Вы вошли в систему'
+        }
+        client.send(pickle.dumps(response))
 
-
-@log_decor
-def handle_data(message: str) -> str:
-    data = json.loads(message)
-    response = callbacks[data["action"]](data)
-    return response
-
-
-def presence(data: dict) -> str:
-    user = data['user']['account_name']
-    response = {'response': '200', 'alert': 'Успешно'}
-    return json.dumps(response, ensure_ascii=False)
-
-
-def send_message_to_client(client: socket, message: str) -> None:
-    client.send(message.encode('utf-8'))
-
-
-def msg(data: dict):
-    return json.dumps({'response': '200', 'alert': 'Успешно'}, ensure_ascii=False)
-
-
-def close(data):
-    return 'q'
+        client.close()
 
 
 if __name__ == '__main__':
-    server = create_server('localhost', 7777)
-    receive_data(server)
+    socket = init_socket()
+    try:
+        main()
+    except Exception as text:
+        print('Сервер не запустился')

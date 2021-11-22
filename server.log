@@ -1,3 +1,0 @@
-2021-11-12 17:57:03,204 INFO  server Create server at "localhost":7777
-2021-11-12 17:57:18,704 INFO  server Принят запрос от ('127.0.0.1', 65315)
-2021-11-12 17:57:18,704 INFO  server Сообщение от клиента: {"action": "presence", "time": "2021-11-12 17:57:18.704000", "type": "status", "user": {"account_name": "test", "status": "Enable"}}

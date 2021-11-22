@@ -5,7 +5,7 @@ from inspect import currentframe, getouterframes
 logger = logging.getLogger(__name__)
 
 
-def log_decor(func):
+def log(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         caller = getouterframes(currentframe())[1][3]
